@@ -50,8 +50,8 @@ img_h = 240
 img_w = 240
 n_features = 16
 
-STEPS_PERCEPTION = 30
-STEPS_TRANSITION = 30
+STEPS_PERCEPTION = 3000
+STEPS_TRANSITION = 3000
 
 
 ''' REAL PROGRAM '''
@@ -87,8 +87,12 @@ for step in range(STEPS_PERCEPTION):
 
     # reconstruct image
     img_scaled = cv2.resize(img, (60, 60))
-    # TODO: change me
-    img_red = img_scaled[:,:,0] + img_scaled[:,:,1] + img_scaled[:,:,2]
+
+    red = np.clip(img_scaled[:, :, 0] - 200., 0., 1.)
+    green = np.clip(-img_scaled[:, :, 1] - 200., 0., 1.)
+    blue = np.clip(-img_scaled[:, :, 2] - 200., 0., 1.)
+    img_red = red * green * blue
+
     img_recon = np.expand_dims(img_red, -1)
 
     agent.pretrain_perception(img, img_recon, lr)
@@ -129,8 +133,10 @@ for step in range(STEPS_TRANSITION):
 
     # reconstruct image
     img_scaled = cv2.resize(next_img, (60, 60))
-    # TODO change me
-    img_red = img_scaled[:, :, 0] + img_scaled[:, :, 1] + img_scaled[:, :, 2]
+    red = np.clip(img_scaled[:, :, 0] - 200., 0, 1)
+    green = np.clip(-img_scaled[:, :, 1] - 200., 0, 1)
+    blue = np.clip(-img_scaled[:, :, 2] - 200., 0, 1)
+    img_red = red * green * blue
     img_recon = np.expand_dims(img_red, -1)
 
     if np.sum(img_recon) > 0:

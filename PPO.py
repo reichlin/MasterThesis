@@ -40,7 +40,7 @@ class Agent:
 
             # Placeholder Pre-train
             self.o_reconstructed = tf.placeholder(shape=[None, 60, 60, 1], dtype=tf.float32)
-            self.o_reconstructed = self.o_reconstructed / 255.
+            #self.o_reconstructed = self.o_reconstructed / 255.
 
             # Placeholders PPO
             self.state_arm = tf.placeholder(shape=[None, self.state_size], dtype=tf.float32)
@@ -167,7 +167,7 @@ class Agent:
                                      padding="valid",
                                      kernel_initializer=self.initializer,
                                      kernel_regularizer=self.regularizer,
-                                     name="conv1")
+                                     name="conv1_p")
 
             conv1 = tf.layers.batch_normalization(inputs=conv1, training=True, name="batch_norm_conv1")
 
@@ -179,7 +179,7 @@ class Agent:
                                      padding="valid",
                                      kernel_initializer=self.initializer,
                                      kernel_regularizer=self.regularizer,
-                                     name="conv2")
+                                     name="conv2_p")
 
             conv2 = tf.layers.batch_normalization(inputs=conv2, training=True, name="batch_norm_conv2")
 
@@ -191,7 +191,7 @@ class Agent:
                                      padding="valid",
                                      kernel_initializer=self.initializer,
                                      kernel_regularizer=self.regularizer,
-                                     name="conv3")
+                                     name="conv3_p")
 
             conv3 = tf.layers.batch_normalization(inputs=conv3, training=True, name="batch_norm_conv3")
 
