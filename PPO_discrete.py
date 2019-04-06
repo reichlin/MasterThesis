@@ -2,13 +2,11 @@ import math
 import tensorflow as tf
 import numpy as np
 import random
-import tensorflow_probability as tfp
-import matplotlib.pyplot as plt
 
 
 class Agent:
 
-    def __init__(self, action_size, img_h, img_w, n_channels, c1, c2, epochs, batch_size):
+    def __init__(self, action_size, img_h, img_w, n_channels, c1, epochs, batch_size):
 
         self.epochs = epochs
         self.batch_size = batch_size
@@ -42,11 +40,11 @@ class Agent:
             self.lr = tf.placeholder(shape=(), dtype=tf.float32)
             self.lr_v = tf.placeholder(shape=(), dtype=tf.float32)
             self.epsilon = tf.placeholder(shape=(), dtype=tf.float32)
+            self.c2 = tf.placeholder(shape=(), dtype=tf.float32)
 
             # constants
             self.n = tf.constant(self.action_size, dtype=tf.float32)
             self.c1 = tf.constant(c1)
-            self.c2 = tf.constant(c2)
             self.pi_greco = tf.constant(math.pi)
 
             # Define models
@@ -58,8 +56,8 @@ class Agent:
 
             self.action_taken_one_hot = tf.one_hot(self.action, self.action_size)
 
-            self.pi_sampled_log = tf.log(tf.reduce_sum(self.pi * self.action_taken_one_hot, -1))
-            self.pi_old_sampled_log = tf.log(tf.reduce_sum(self.pi_old * self.action_taken_one_hot, -1))
+            self.pi_sampled_log = tf.log(tf.reduce_sum(self.pi * self.action_taken_one_hot, -1) + 1e-5)
+            self.pi_old_sampled_log = tf.log(tf.reduce_sum(self.pi_old * self.action_taken_one_hot, -1) + 1e-5)
 
             # PPO Loss
 
@@ -183,7 +181,7 @@ class Agent:
         std = np.std(advantages)
         return (advantages - mean) / (np.sqrt(std) + 1e-10)
 
-    def fit(self, img, actions, advantages, R, lr, lrv, epsilon):
+    def fit(self, img, actions, advantages, R, lr, lrv, epsilon, c2):
 
         #advantages = self.normalize_advantages(advantages)
 
@@ -206,7 +204,8 @@ class Agent:
                                                          self.V_targ: R[b * self.batch_size:(b + 1) * self.batch_size],
                                                          self.lr: lr,
                                                          self.lr_v: lrv,
-                                                         self.epsilon: epsilon})
+                                                         self.epsilon: epsilon,
+                                                         self.c2: c2})
 
                 self.train_writer.add_summary(summary, self.i)
                 self.i += 1

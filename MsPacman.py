@@ -1,5 +1,4 @@
 import gym
-import matplotlib.pyplot as plt
 import tensorflow as tf
 import numpy as np
 import PPO_discrete as PPO
@@ -14,18 +13,18 @@ def alpha_scheduler(step, STEPS):
     return a
 
 
-K = 2
-T = 16
+K = 8
+T = 128
 STEPS = int(128 / (K*T))
 
-EPOCHS = 2
+EPOCHS = 3
 gamma = 0.99
 gae = 0.95
-batch_size = 8
+batch_size = 8*32
 c1 = 1.0
-c2 = 0.01
+c2_0 = 0.01
 lr_0 = 2.5 * 1e-4
-lr_V_0 = 1.0 * 1e-6
+lr_V_0 = 2.5 * 1e-4
 epsilon_0 = 0.1
 
 envs = []
@@ -38,9 +37,11 @@ for i in range(K):
 action_size = envs[0].action_space.n
 img_h = 210
 img_w = 160
-n_channels = 1
+n_channels = 4
 
-agent = PPO.Agent(action_size, img_h, img_w, n_channels, c1, c2, EPOCHS, batch_size)
+agent = PPO.Agent(action_size, img_h, img_w, n_channels, c1, EPOCHS, batch_size)
+
+agent.update_old_policy()
 
 # create memory buffer
 states = np.zeros((K, T, img_h, img_w, n_channels))
@@ -51,6 +52,7 @@ advantages = np.zeros((K, T))
 greedy = 1.0
 
 imgs = np.zeros((K, img_h, img_w, n_channels))
+next_img = np.zeros((img_h, img_w, n_channels))
 
 for step in range(STEPS):
 
@@ -63,6 +65,7 @@ for step in range(STEPS):
     lr = lr_0 * alpha
     lr_V = lr_V_0 * alpha
     epsilon = epsilon_0 * alpha
+    c2 = c2_0 * alpha
 
     for t in range(T):
 
@@ -71,7 +74,8 @@ for step in range(STEPS):
             if done[k]:
                 done[k] = False
                 img = envs[k].reset()
-                imgs[k,:,:,0] = (1. * img[:,:,0] + 1. * img[:,:,1] + 1. * img[:,:,2]) / (3. * 255.)
+                for frame in range(n_channels):
+                    imgs[k,:,:,frame] = (1. * img[:,:,0] + 1. * img[:,:,1] + 1. * img[:,:,2]) / (3. * 255.)
 
             if np.random.uniform() < greedy:
                 pi = agent.get_action(imgs[k])
@@ -79,11 +83,13 @@ for step in range(STEPS):
             else:
                 action = env.action_space.sample()
 
-            img, reward, done[k], info = envs[k].step(action)
-            next_img = (1. * img[:, :, 0] + 1. * img[:, :, 1] + 1. * img[:, :, 2]) / (3. * 255.)
+            img_t1, reward, done[k], info = envs[k].step(action)
+            for channel in range(n_channels-1):
+                next_img[:, :, channel] = imgs[k,:,:,channel+1]
+            next_img[:, :, n_channels] = (1. * img_t1[:, :, 0] + 1. * img_t1[:, :, 1] + 1. * img_t1[:, :, 2]) / (3. * 255.)
 
             Vt = agent.get_state_value(imgs[k])
-            Vt1 = agent.get_state_value(np.expand_dims(next_img, -1))
+            Vt1 = agent.get_state_value(next_img)
             delta = reward + gamma * Vt1 - Vt
 
             states[k, t] = imgs[k]
@@ -91,7 +97,7 @@ for step in range(STEPS):
             cumulative_reward[k, t] = reward
             advantages[k, t] = delta
 
-            imgs[k,:,:,0] = next_img
+            imgs[k] = next_img
             sum_reward += reward
 
     for kk in range(K):
@@ -105,7 +111,8 @@ for step in range(STEPS):
               cumulative_reward.reshape((K*T)),
               lr,
               lr_V,
-              epsilon)
+              epsilon,
+              c2)
 
     agent.update_old_policy()
 
